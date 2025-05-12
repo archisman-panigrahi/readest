@@ -222,7 +222,7 @@ jobs:
           gh release upload ${{ needs.get-release.outputs.release_tag }} latest.json --clobber
 
       - uses: tauri-apps/tauri-action@v0
-        if: matrix.config.release != 'android'
+        if: matrix.config.release != 'android' && matrix.config.arch != 'armhf'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -274,6 +274,19 @@ jobs:
 
           echo "Uploading $bin_file to GitHub release"
           gh release upload ${{ needs.get-release.outputs.release_tag }} $bin_file --clobber
+
+      - name: Build and upload armhf deb package
+        if: matrix.config.arch == 'armhf'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user-static
+          cd apps/readest-app
+          pnpm tauri build --target armv7-unknown-linux-gnueabihf --bundles deb
+          deb_file=$(find src-tauri/target/release/bundle/deb -name "*.deb" | head -n 1)
+          echo "Uploading $deb_file to GitHub release"
+          gh release upload ${{ needs.get-release.outputs.release_tag }} "$deb_file" --clobber
 
   update-release:
     permissions:
